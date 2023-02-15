@@ -3,6 +3,8 @@ import pathlib
 import subprocess
 import sys
 
+import zlib
+
 
 def run_check_errors(cmd):
     """Run a system command, and exit if an error occurred, otherwise continue"""
@@ -93,18 +95,18 @@ def collate(
 
         if aws_remote:
 
-            remote_input_dir = f"{aws_remote}/analysis/{batch}/{plate}/{csv_dir}"
+            remote_input_dir = f"s3://cellpainting-gallery/cpg0016-jump/source_7/workspace/analysis/{batch}/{plate}/{csv_dir}"
 
             remote_backend_file = f"{aws_remote}/backend/{batch}/{plate}/{plate}.sqlite"
 
             remote_aggregated_file = f"{aws_remote}/backend/{batch}/{plate}/{plate}.csv"
 
-            sync_cmd = f'aws s3 sync --exclude "*" --include "*/Cells.csv" --include "*/Nuclei.csv" --include "*/Cytoplasm.csv" --include "*/Image.csv" {remote_input_dir} {input_dir}'
+            sync_cmd = f'aws s3 sync --exclude "*" --include "*/Cells.csv.gz" --include "*/Nuclei.csv.gz" --include "*/Cytoplasm.csv.gz" --include "*/Image.csv.gz" {remote_input_dir} {input_dir}  --profile jump-cp-role-jump-cellpainting'
             if printtoscreen:
                 print(f"Downloading CSVs from {remote_input_dir} to {input_dir}")
             run_check_errors(sync_cmd)
 
-        ingest_cmd = [
+        """ingest_cmd = [
             "cytominer-database",
             "ingest",
             input_dir,
@@ -117,7 +119,47 @@ def collate(
             ingest_cmd.append("--no-munge")
         if printtoscreen:
             print(f"Ingesting {input_dir}")
-        run_check_errors(ingest_cmd)
+        run_check_errors(ingest_cmd)"""
+        from sqlalchemy import create_engine
+        from sqlalchemy.pool import NullPool
+        import glob
+        import pandas
+        engine = create_engine(f"sqlite:///{cache_backend_file}", poolclass=NullPool)
+        con = engine.connect()
+
+        image_csv = glob.glob(os.path.join(input_dir,"**/Image.csv.gz"))[0]
+        compartment_csvs = [x for x in glob.glob(os.path.join(input_dir,"**/*.csv.gz")) if "Image" not in x]
+
+        identifier = checksum(image_csv)
+        print("Ingesting Image")
+        #handle image CSV
+        df_image = pandas.read_csv(image_csv)
+        image_cols = list(df_image.columns)
+        image_new_cols = ["TableNumber"]+image_cols
+        df_image["TableNumber"] = identifier
+        df_image = df_image[image_new_cols]
+        df_image.to_sql("Image",con,if_exists='append',index=False)
+
+        for eachcompartment in ["Nuclei","Cells","Cytoplasm"]:
+            print(f"Ingesting {eachcompartment}")
+            comp_csv = [x for x in compartment_csvs if eachcompartment in x][0]
+            df_comp = pandas.read_csv(comp_csv)
+            comp_cols = list(df_comp.columns)
+            # We want to keep these column names the same and first, everything else should get the compartment appended
+            dont_adjust = ["TableNumber","ImageNumber","ObjectNumber"]
+            rename_dict = {x:f"{eachcompartment}_{x}" for x in comp_cols if x not in dont_adjust}
+            renamed_cols = list(rename_dict.values())
+            renamed_cols.sort()
+            renamed_cols = dont_adjust + renamed_cols
+            for eachcol in dont_adjust:
+                rename_dict[eachcol]=eachcol
+            df_comp["TableNumber"] = identifier
+            df_comp.rename(columns=rename_dict,inplace=True)
+            df_comp = df_comp[renamed_cols]
+            print(f"Writing {eachcompartment}")
+            df_comp.to_sql(eachcompartment,con,if_exists='append',index=False)
+
+        con.close()
 
         if column:
             if print:
@@ -137,6 +179,13 @@ def collate(
 
         if printtoscreen:
             print(f"Indexing database {cache_backend_file}")
+        for eachcompartment in ["Cells", "Cytoplasm", "Nuclei", "Image"]:
+            ix_cmd_compartment = [
+                "sqlite3",
+                cache_backend_file,
+                f"CREATE INDEX IF NOT EXISTS ix_{eachcompartment.lower()}_TableNumber ON {eachcompartment}(TableNumber);",
+            ]
+            run_check_errors(ix_cmd_compartment)
         index_cmd_img = [
             "sqlite3",
             cache_backend_file,
@@ -161,7 +210,7 @@ def collate(
 
             if printtoscreen:
                 print(f"Uploading {cache_backend_file} to {remote_backend_file}")
-            cp_cmd = ["aws", "s3", "cp", cache_backend_file, remote_backend_file]
+            cp_cmd = ["aws", "s3", "cp", cache_backend_file, remote_backend_file,"--profile","jump-cp-role-jump-cellpainting","--acl","bucket-owner-full-control","--metadata-directive","REPLACE"]
             run_check_errors(cp_cmd)
 
             if printtoscreen:
@@ -184,7 +233,7 @@ def collate(
 
         remote_aggregated_file = f"{aws_remote}/backend/{batch}/{plate}/{plate}.csv"
 
-        cp_cmd = ["aws", "s3", "cp", remote_backend_file, backend_file]
+        cp_cmd = ["aws", "s3", "cp", remote_backend_file, backend_file,"--profile","jump-cp-role-jump-cellpainting","--acl","bucket-owner-full-control","--metadata-directive","REPLACE"]
         if printtoscreen:
             print(
                 f"Downloading SQLite files from {remote_backend_file} to {backend_file}"
@@ -210,7 +259,7 @@ def collate(
     if aws_remote:
         if printtoscreen:
             print(f"Uploading {aggregated_file} to {remote_aggregated_file}")
-        csv_cp_cmd = ["aws", "s3", "cp", aggregated_file, remote_aggregated_file]
+        csv_cp_cmd = ["aws", "s3", "cp", aggregated_file, remote_aggregated_file,"--profile","jump-cp-role-jump-cellpainting","--acl","bucket-owner-full-control","--metadata-directive","REPLACE"]
         run_check_errors(csv_cp_cmd)
 
         if printtoscreen:
@@ -218,3 +267,25 @@ def collate(
         import shutil
 
         shutil.rmtree(backend_dir)
+
+###### CODE PULLED DIRCTLY FROM CYTOMINER-DATABASE
+
+def checksum(pathname, buffer_size=65536):
+    """
+    Generate a 32-bit unique identifier for a file.
+    
+    :param pathname: input file
+    :param buffer_size: buffer size   
+    """
+    with open(pathname, "rb") as stream:
+        result = zlib.crc32(bytes(0))
+
+        while True:
+            buffer = stream.read(buffer_size)
+
+            if not buffer:
+                break
+
+            result = zlib.crc32(buffer, result)
+
+    return result & 0xffffffff
