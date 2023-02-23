@@ -101,7 +101,7 @@ def collate(
 
             remote_aggregated_file = f"{aws_remote}/backend/{batch}/{plate}/{plate}.csv"
 
-            sync_cmd = f'aws s3 sync --exclude "*" --include "*/Cells.csv.gz" --include "*/Nuclei.csv.gz" --include "*/Cytoplasm.csv.gz" --include "*/Image.csv.gz" {remote_input_dir} {input_dir}  --profile jump-cp-role-jump-cellpainting'
+            sync_cmd = f'aws s3 sync --exclude * --include */Cells.csv --include */Nuclei.csv --include */Cytoplasm.csv --include */Image.csv {remote_input_dir} {input_dir}  --profile jump-cp-role-jump-cellpainting'
             if printtoscreen:
                 print(f"Downloading CSVs from {remote_input_dir} to {input_dir}")
             run_check_errors(sync_cmd)
@@ -127,8 +127,8 @@ def collate(
         engine = create_engine(f"sqlite:///{cache_backend_file}", poolclass=NullPool)
         con = engine.connect()
 
-        image_csv = glob.glob(os.path.join(input_dir,"**/Image.csv.gz"))[0]
-        compartment_csvs = [x for x in glob.glob(os.path.join(input_dir,"**/*.csv.gz")) if "Image" not in x]
+        image_csv = glob.glob(os.path.join(input_dir,"**/Image.csv"))[0]
+        compartment_csvs = [x for x in glob.glob(os.path.join(input_dir,"**/*.csv")) if "Image" not in x]
 
         identifier = checksum(image_csv)
         print("Ingesting Image")
