@@ -157,8 +157,8 @@ def collate(
             # We want to keep these column names the same and first, everything else should get the compartment appended
             dont_adjust = ["ImageNumber","ObjectNumber","TableNumber"]
             rename_dict = {}
-            for eachcol in compcols:
-                if eachcol in dont_adust:
+            for eachcol in comp_cols:
+                if eachcol in dont_adjust:
                     pass
                 elif eachcol[:len(eachcompartment)+1]==f"{eachcompartment}_":
                     rename_dict[eachcol]=eachcol
