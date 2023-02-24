@@ -135,7 +135,16 @@ def collate(
         #handle image CSV
         df_image = pandas.read_csv(image_csv)
         image_cols = list(df_image.columns)
-        image_new_cols = ["TableNumber"]+image_cols
+        rename_dict = {}
+        for eachcol in image_cols:
+            if eachcol[:6] != "Image_":
+                rename_dict[eachcol]=eachcol
+            else:
+                rename_dict[eachcol]=eachcol[6:]
+        renamed_cols = list(rename_dict.values())
+        renamed_cols.sort()
+        image_new_cols = ["TableNumber"] + renamed_cols
+        df_image.rename(columns=rename_dict,inplace=True)
         df_image["TableNumber"] = identifier
         df_image = df_image[image_new_cols]
         df_image.to_sql("Image",con,if_exists='append',index=False)
@@ -146,8 +155,15 @@ def collate(
             df_comp = pandas.read_csv(comp_csv)
             comp_cols = list(df_comp.columns)
             # We want to keep these column names the same and first, everything else should get the compartment appended
-            dont_adjust = ["TableNumber","ImageNumber","ObjectNumber"]
-            rename_dict = {x:f"{eachcompartment}_{x}" for x in comp_cols if x not in dont_adjust}
+            dont_adjust = ["ImageNumber","ObjectNumber","TableNumber"]
+            rename_dict = {}
+            for eachcol in compcols:
+                if eachcol in dont_adust:
+                    pass
+                elif eachcol[:len(eachcompartment)+1]==f"{eachcompartment}_":
+                    rename_dict[eachcol]=eachcol
+                else:
+                    rename_dict[eachcol]=f"{eachcompartment}_{eachcol}"
             renamed_cols = list(rename_dict.values())
             renamed_cols.sort()
             renamed_cols = dont_adjust + renamed_cols
