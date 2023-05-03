@@ -95,7 +95,7 @@ def collate(
 
         if aws_remote:
 
-            remote_input_dir = f"s3://cellpainting-gallery/cpg0016-jump/source_13/workspace/analysis/{batch}/{plate}/{csv_dir}"
+            remote_input_dir = f"s3://cellpainting-gallery/jump/source_15/workspace/analysis/{batch}/{plate}/{csv_dir}/{plate}"
 
             remote_backend_file = f"{aws_remote}/backend/{batch}/{plate}/{plate}.sqlite"
 
