@@ -160,11 +160,9 @@ def collate(
         df_image.rename(columns=rename_dict,inplace=True)
         df_image["TableNumber"] = identifier
         df_image = df_image[image_new_cols]
-        #df_image.to_sql("Image",con,if_exists='append',index=False) PUT BACK IN REAL VERSION
-        df_image.to_csv('Image_edited.csv',index=False) #REMOVE IN REAL VERSION
+        df_image.to_sql("Image",con,if_exists='append',index=False) 
 
-        #for eachcompartment in ["Nuclei","Cells","Cytoplasm"]: PUT BACK IN REAL VERSION
-        for eachcompartment in ["Cells"]: #REMOVE IN REAL VERSION
+        for eachcompartment in ["Nuclei","Cells","Cytoplasm"]: 
             print(f"Ingesting {eachcompartment}")
             comp_csv = [x for x in compartment_csvs if eachcompartment in x][0]
             df_comp = pandas.read_csv(comp_csv)
