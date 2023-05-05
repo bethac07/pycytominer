@@ -138,32 +138,56 @@ def collate(
         rename_dict = {}
         for eachcol in image_cols:
             if eachcol[:6] != "Image_":
-                rename_dict[eachcol]=eachcol
+                if 'RNA_Background' in eachcol: #https://github.com/jump-cellpainting/datasets-private/issues/73
+                    if eachcol.replace('RNA_Background','ER__Background') not in image_cols:
+                        # if there's already an ER column, do nothing, meaning won't end up in image_new_cols
+                        rename_dict[eachcol]=eachcol.replace('RNA_Background','ER__Background')            
+                elif 'RNA' in eachcol:
+                    if eachcol.replace('RNA','ER') not in image_cols:
+                        # if there's already an ER column, do nothing, meaning won't end up in image_new_cols
+                        rename_dict[eachcol]=eachcol.replace('RNA','ER')
+                else:
+                    rename_dict[eachcol]=eachcol
             else:
-                rename_dict[eachcol]=eachcol[6:]
+                if 'RNA' in eachcol:
+                    if eachcol.replace('RNA','ER') not in image_cols:
+                        rename_dict[eachcol]=eachcol.replace('RNA','ER')[6:]
+                else:
+                    rename_dict[eachcol]=eachcol[6:]
         renamed_cols = list(rename_dict.values())
         renamed_cols.sort()
         image_new_cols = ["TableNumber"] + renamed_cols
         df_image.rename(columns=rename_dict,inplace=True)
         df_image["TableNumber"] = identifier
         df_image = df_image[image_new_cols]
-        df_image.to_sql("Image",con,if_exists='append',index=False)
+        #df_image.to_sql("Image",con,if_exists='append',index=False) PUT BACK IN REAL VERSION
+        df_image.to_csv('Image_edited.csv',index=False) #REMOVE IN REAL VERSION
 
-        for eachcompartment in ["Nuclei","Cells","Cytoplasm"]:
+        #for eachcompartment in ["Nuclei","Cells","Cytoplasm"]: PUT BACK IN REAL VERSION
+        for eachcompartment in ["Cells"]: #REMOVE IN REAL VERSION
             print(f"Ingesting {eachcompartment}")
             comp_csv = [x for x in compartment_csvs if eachcompartment in x][0]
             df_comp = pandas.read_csv(comp_csv)
-            comp_cols = list(df_comp.columns)
-            # We want to keep these column names the same and first, everything else should get the compartment appended
+            comp_cols = list(df_comp.columns) # We want to keep these column names the same and first, everything else should get the compartment appended
             dont_adjust = ["ImageNumber","ObjectNumber","TableNumber"]
             rename_dict = {}
             for eachcol in comp_cols:
                 if eachcol in dont_adjust:
                     pass
                 elif eachcol[:len(eachcompartment)+1]==f"{eachcompartment}_":
-                    rename_dict[eachcol]=eachcol
+                    if 'RNA' in eachcol:
+                        if eachcol.replace('RNA','ER') not in comp_cols:
+                            # if there's already an ER column, do nothing, meaning won't end up in renamed_cols
+                            rename_dict[eachcol]=eachcol.replace('RNA','ER')
+                    else:
+                        rename_dict[eachcol]=eachcol
                 else:
-                    rename_dict[eachcol]=f"{eachcompartment}_{eachcol}"
+                    if 'RNA' in eachcol:
+                        if eachcol.replace('RNA','ER') not in comp_cols:
+                            # if there's already an ER column, do nothing, meaning won't end up in renamed_cols
+                            rename_dict[eachcol]=f"{eachcompartment}_{eachcol}".replace('RNA','ER')
+                    else:
+                        rename_dict[eachcol]=f"{eachcompartment}_{eachcol}"
             renamed_cols = list(rename_dict.values())
             renamed_cols.sort()
             renamed_cols = dont_adjust + renamed_cols
