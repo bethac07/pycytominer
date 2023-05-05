@@ -149,7 +149,11 @@ def collate(
                 else:
                     rename_dict[eachcol]=eachcol
             else:
-                if 'RNA' in eachcol:
+                if 'RNA_Background' in eachcol: #https://github.com/jump-cellpainting/datasets-private/issues/73
+                    if eachcol.replace('RNA_Background','ER__Background') not in image_cols:
+                        # if there's already an ER column, do nothing, meaning won't end up in image_new_cols
+                        rename_dict[eachcol]=eachcol.replace('RNA_Background','ER__Background')[6:]  
+                elif 'RNA' in eachcol:
                     if eachcol.replace('RNA','ER') not in image_cols:
                         rename_dict[eachcol]=eachcol.replace('RNA','ER')[6:]
                 else:
