@@ -133,7 +133,7 @@ def collate(
         identifier = checksum(image_csv)
         print("Ingesting Image")
         #handle image CSV
-        df_image = pandas.read_csv(image_csv)
+        df_image = pandas.read_csv(image_csv,chunksize=10000)
         image_cols = list(df_image.columns)
         rename_dict = {}
         for eachcol in image_cols:
@@ -164,7 +164,7 @@ def collate(
         df_image.rename(columns=rename_dict,inplace=True)
         df_image["TableNumber"] = identifier
         df_image = df_image[image_new_cols]
-        df_image.to_sql("Image",con,if_exists='append',index=False) 
+        df_image.to_sql("Image",con,if_exists='append',index=False,chunksize=10000) 
 
         for eachcompartment in ["Nuclei","Cells","Cytoplasm"]: 
             print(f"Ingesting {eachcompartment}")
