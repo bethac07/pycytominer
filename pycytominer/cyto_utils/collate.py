@@ -133,7 +133,7 @@ def collate(
         identifier = checksum(image_csv)
         print("Ingesting Image")
         #handle image CSV
-        df_image = pandas.read_csv(image_csv,chunksize=10000)
+        df_image = pandas.read_csv(image_csv)
         image_cols = list(df_image.columns)
         rename_dict = {}
         for eachcol in image_cols:
@@ -164,12 +164,16 @@ def collate(
         df_image.rename(columns=rename_dict,inplace=True)
         df_image["TableNumber"] = identifier
         df_image = df_image[image_new_cols]
-        df_image.to_sql("Image",con,if_exists='append',index=False,chunksize=10000) 
+        df_image.to_sql("Image",con,if_exists='append',index=False) 
 
         for eachcompartment in ["Nuclei","Cells","Cytoplasm"]: 
             print(f"Ingesting {eachcompartment}")
             comp_csv = [x for x in compartment_csvs if eachcompartment in x][0]
-            df_comp = pandas.read_csv(comp_csv)
+            dflist=[]
+            for chunk in pd.read_csv(comp_csv,chunksize=10000):
+                dflist.append(chunk)
+            df_comp = pd.concat(dflist)
+            #df_comp = pandas.read_csv(comp_csv)
             comp_cols = list(df_comp.columns) # We want to keep these column names the same and first, everything else should get the compartment appended
             dont_adjust = ["ImageNumber","ObjectNumber","TableNumber"]
             rename_dict = {}
