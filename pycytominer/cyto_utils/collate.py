@@ -170,9 +170,9 @@ def collate(
             print(f"Ingesting {eachcompartment}")
             comp_csv = [x for x in compartment_csvs if eachcompartment in x][0]
             dflist=[]
-            for chunk in pd.read_csv(comp_csv,chunksize=10000):
+            for chunk in pandas.read_csv(comp_csv,chunksize=10000):
                 dflist.append(chunk)
-            df_comp = pd.concat(dflist)
+            df_comp = pandas.concat(dflist)
             #df_comp = pandas.read_csv(comp_csv)
             comp_cols = list(df_comp.columns) # We want to keep these column names the same and first, everything else should get the compartment appended
             dont_adjust = ["ImageNumber","ObjectNumber","TableNumber"]
