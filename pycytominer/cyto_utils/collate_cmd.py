@@ -78,7 +78,7 @@ if __name__ == "__main__":
         help="Whether to print status updates",
     )
     parser.add_argument(
-        "--fields_of_view",
+        "--fields-of-view",
         dest="fields_of_view",
         type=lambda s: [item for item in s.split(",")],
         default="all",
