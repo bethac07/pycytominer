@@ -77,6 +77,13 @@ if __name__ == "__main__":
         default=True,
         help="Whether to print status updates",
     )
+    parser.add_argument(
+        "--fields_of_view",
+        dest="fields_of_view",
+        type=lambda s: [item for item in s.split(",")],
+        default="all",
+        help="List of fields of view to aggregate. Default all. Multiple values can be passed in if comma separated with no spaces between them",
+    )
 
     args = parser.parse_args()
 
@@ -95,4 +102,5 @@ if __name__ == "__main__":
         add_image_features=args.add_image_features,
         image_feature_categories=args.image_feature_categories,
         printtoscreen=args.printtoscreen,
+        fields_of_view=args.fields_of_view,
     )
