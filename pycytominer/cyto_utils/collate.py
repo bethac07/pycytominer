@@ -189,7 +189,11 @@ def collate(
     if aggregate_only and aws_remote:
         remote_backend_file = f"{aws_remote}/backend/{batch}/{plate}/{plate}.sqlite"
 
-        remote_aggregated_file = f"{aws_remote}/backend/{batch}/{plate}/{plate}.csv"
+        if fields_of_view != "all":
+            subsample = max(fields_of_view)
+            remote_aggregated_file = f"{aws_remote}/backend/{subsample}siteSubSample_{batch}/{plate}/{plate}.csv"
+        else:
+            remote_aggregated_file = f"{aws_remote}/backend/{batch}/{plate}/{plate}.csv"
 
         cp_cmd = ["aws", "s3", "cp", remote_backend_file, backend_file]
         if printtoscreen:
